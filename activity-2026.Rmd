@@ -7,7 +7,7 @@ output:
     theme: "Boadilla"
     colortheme: "orchid"
 header-includes:
-  - \AtBeginDocument{\title[]{Misclassification Activity\\JSM 2026 Short Course\\(with solutions)}}
+  - \AtBeginDocument{\title[]{Misclassification Activity\\JSM 2026 Short Course}}
   - \AtBeginDocument{\author[]{Paul Gustafson}}
   - \AtBeginDocument{\date[]{August 2, 2026}}
 ---
