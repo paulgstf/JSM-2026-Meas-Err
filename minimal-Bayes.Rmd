@@ -1,0 +1,95 @@
+---
+title: "Minimal Demo of Bayesian Measurement Error Correction"
+author: "Paul Gustafson"
+date: "2026-07-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Express the joint model for observables and latents through three component models
+
+```{r}
+jags.code <- "
+model {
+  for (i in 1:n) {
+    y[i] ~ dbern(p[i])  ### outcome model  
+    logit(p[i]) <- beta0 + beta1 * x[i]
+  }
+  for (i in 1:n) {
+    x.str[i] ~ dnorm(x[i], prc.ME) ### meas err model
+  }    
+  for (i in 1:n) {
+    x[i] ~ dnorm(mu, prc.X)  ### exposure model
+  }    
+
+  sd.ME ~ dunif(a,b)   # prior (expert opinion) on ME magnitude
+  prc.ME <- pow(sd.ME, -2)
+
+  # diffuse priors on other parameters
+  mu ~ dnorm(0, 0.0001)
+  prc.X ~ dgamma(0.001, 0.001)
+  beta0 ~ dnorm(0, 0.0001)
+  beta1 ~ dnorm(0, 0.0001)
+}
+"
+```
+
+We design the test world and data
+
+```{r}
+require(rje)
+### the truth in our made-up world
+set.seed(13)
+x <- rnorm(400)
+x.str <- rnorm(400, mean=x, sd=0.8)
+y <- rbinom(400, size=1, prob=expit(-1+x)) 
+```
+
+
+Ideal and naive analyes:
+
+
+```{r}
+summary(glm(y~x, family=binomial))
+summary(glm(y~x.str, family=binomial))
+```
+
+
+Now fit the Bayesian model with expert opinion about the ME magnitude:
+
+
+```{r}
+require(rjags)
+jags.mod <- jags.model(textConnection(jags.code),
+  data=list(n=length(y), y=y, x.str=x.str, a=0.6, b=0.9),
+  n.chains=3)
+
+set.seed(17)
+update(jags.mod, 5000)  ## burn-in MCMC iterations
+jags.opt <- coda.samples(jags.mod, n.iter=400000, thin=20, 
+  variable.names=c("beta0","beta1","sd.ME"))
+```
+
+Parameter inference:
+
+```{r}
+summary(jags.opt)
+```
+
+Joint posterior on measurement error SD and parameter of interest:
+
+```{r, warnings=F, message=F}
+require(bayesplot)
+#pdf("minimal-Bayes-fig.pdf")
+mcmc_scatter(jags.opt, "sd.ME", "beta1")
+#graphics.off()
+```
+
+
+
+
+
+
